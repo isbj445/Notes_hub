@@ -1,0 +1,32 @@
+[
+  {
+    "id": "1775562035855",
+    "title": "मानचित्र  द्वारा भारत का GK",
+    "description": "मानचित्र  द्वारा भारत का GK",
+    "category": "Arts & Humanities",
+    "file_url": "/uploads/48cc66af-b495-487d-b553-9af86cdef969.pdf",
+    "file_type": "pdf",
+    "file_size": 1864915,
+    "is_premium": false,
+    "user_id": "demo-user",
+    "likes_count": 1,
+    "downloads_count": 0,
+    "comments": [],
+    "created_at": "2026-04-07T11:40:35.855Z"
+  },
+  {
+    "id": "1775517185053",
+    "title": "hb",
+    "description": "bjl",
+    "category": "Engineering",
+    "file_url": "/uploads/67f511f9-2ecc-4023-bada-c59a923238c7.pdf",
+    "file_type": "pdf",
+    "file_size": 64806,
+    "is_premium": false,
+    "user_id": "demo-user",
+    "likes_count": 0,
+    "downloads_count": 0,
+    "comments": [],
+    "created_at": "2026-04-06T23:13:05.053Z"
+  }
+]
