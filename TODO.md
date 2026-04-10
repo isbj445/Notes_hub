@@ -1,7 +1,25 @@
-# Real-time Notes Listing Fix
+# Supabase Storage Integration - FINAL ✅
 
-1. [x] Update NotesListingPage.tsx - Replace Supabase with /api/notes API
-2. [x] Add refresh after upload in UploadPage.tsx
-3. [x] Restart server `npm run dev`
-4. [x] Test real-time updates - WORKING! ✅
+## Status: Server running on localhost:3000
 
+**🚀 Success:**
+- Deps installed
+- server-final-fixed.ts → Multer → Supabase "notes" bucket
+- PDF/PPT/DOC support
+- Public URLs generated
+
+**❌ Upload fail fix:**
+```
+Supabase Dashboard → Storage → "notes" bucket → Settings → Policies
+Add:
+- INSERT: true 
+- SELECT: true (public)
+For: service_role OR public
+```
+
+**Test command:**
+```
+http://localhost:3000 → Upload PDF → "✅ SUPABASE UPLOAD"
+```
+
+**Complete** - Policy lagao, ready!
