@@ -21,7 +21,9 @@
       ]
     },
     "allowImportingTsExtensions": true,
-    "noEmit": true,
-    "types": ["vite/client"]
-  }
+    "noEmit": false,
+    "types": ["vite/client", "node"],
+    "outDir": "dist"
+  },
+  "include": ["**/*.ts", "**/*.tsx"]
 }

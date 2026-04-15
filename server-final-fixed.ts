@@ -38,7 +38,7 @@ const upload = multer({
         mime.includes('powerpoint')) {
       cb(null, true);
     } else {
-      cb(new Error('PDF/PPT/DOC only'), false);
+      cb(null, false);
     }
   }
 });

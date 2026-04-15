@@ -6,8 +6,9 @@
   "scripts": {
     "dev": "tsx server-final-fixed.ts",
     "dev-nodemon": "nodemon server.ts",
-    "start": "tsx server.ts",
+    "start": "node dist/server.js",
     "build": "vite build",
+    "vercel-build": "npm run build && tsc -p tsconfig.server.json",
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit"
