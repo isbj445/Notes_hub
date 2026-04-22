@@ -37,6 +37,14 @@ export const UploadPage = () => {
     }
   };
 
+  const getFileType = (filename: string): string => {
+    const ext = filename.split('.').pop()?.toLowerCase();
+    if (ext === 'pdf') return 'pdf';
+    if (ext === 'ppt' || ext === 'pptx') return 'ppt';
+    if (ext === 'doc' || ext === 'docx') return 'doc';
+    return 'unknown';
+  };
+
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!file || !user) {
@@ -46,35 +54,64 @@ export const UploadPage = () => {
 
     setUploading(true);
     setError(null);
+    setProgress(0);
 
     try {
-      // 1. Upload to Supabase Storage
+      // 1. Generate file path and type
       const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random()}.${fileExt}`;
-      const filePath = `${user.id}/${fileName}`;
+      const fileName = `${crypto.randomUUID()}.${fileExt}`;
+      const filePath = `notes/${user.id}/${fileName}`;
+      const fileType = getFileType(file.name);
 
-      // Local real PDF for preview
-      // 3. REAL FILE UPLOAD with FormData
-      const formData = new FormData();
-      formData.append('file', file!);
-      formData.append('title', title);
-      formData.append('description', description);
-      formData.append('category', category);
-      formData.append('is_premium', isPremium.toString());
+      // 2. Upload to Supabase Storage 'notes' bucket
+      setProgress(30);
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('notes')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
 
-      const response = await fetch('/api/notes/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) throw new Error('Upload failed');
+      if (uploadError) throw new Error(`Storage upload failed: ${uploadError.message}`);
       
-      // Refresh notes list
-      window.location.reload();
-      navigate('/notes');
+      // 3. Get public URL
+      setProgress(60);
+      const { data: { publicUrl } } = supabase.storage
+        .from('notes')
+        .getPublicUrl(filePath);
+
+      // 4. Insert metadata to notes table
+      setProgress(80);
+      const { error: insertError } = await supabase
+        .from('notes')
+        .insert([{
+          title,
+          description: `${description} [Category: ${category}]`,
+          file_url: publicUrl,
+          file_type: fileType,
+          is_premium: isPremium,
+          user_id: user.id,
+          status: 'pending'  // Wait for admin approval
+        }]);
+
+      if (insertError) throw new Error(`Database insert failed: ${insertError.message}`);
+
+      setProgress(100);
+      
+      // Success: Reset form and navigate to dashboard
+      setTimeout(() => {
+        setFile(null);
+        setTitle('');
+        setDescription('');
+        setCategory('Engineering');
+        setIsPremium(false);
+        navigate('/dashboard');
+      }, 1500);
+
     } catch (err: any) {
       console.error('Upload error:', err);
       setError(err.message || 'Failed to upload note');
+      setProgress(0);
     } finally {
       setUploading(false);
     }
