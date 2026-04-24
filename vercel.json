@@ -7,23 +7,16 @@
       "config": {
         "distDir": "dist"
       }
-    },
-    {
-      "src": "dist/server.js",
-      "use": "@vercel/node"
     }
   ],
   "routes": [
     {
-      "src": "/api/(.*)",
-      "dest": "dist/server.js"
+      "handle": "filesystem"
     },
     {
       "src": "/(.*)",
-      "dest": "dist/server.js"
+      "dest": "/index.html"
     }
-  ],
-  "env": {
-    "NODE_ENV": "production"
-  }
+  ]
 }
+
