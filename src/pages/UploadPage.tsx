@@ -91,7 +91,7 @@ export const UploadPage = () => {
           file_type: fileType,
           is_premium: isPremium,
           user_id: user.id,
-          status: 'pending'  // Wait for admin approval
+          status: 'approved'  // Immediate visibility without admin approval
         }]);
 
       if (insertError) throw new Error(`Database insert failed: ${insertError.message}`);

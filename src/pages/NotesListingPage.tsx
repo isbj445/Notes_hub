@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-// No axios needed - using fetch
 import { motion, AnimatePresence } from 'motion/react';
-import { FileText, Download, Lock, Search, Filter, Crown, Loader2, Eye, X, BookOpen, Shield, ThumbsUp, MessageSquare, Sparkles, TrendingUp } from 'lucide-react';
+import { FileText, Download, Lock, Search, Crown, Loader2, Eye, X, BookOpen, ThumbsUp, MessageSquare, Sparkles, TrendingUp } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { supabase } from '../lib/supabase';
 import { Link } from 'react-router-dom';
 
 interface Note {
@@ -13,6 +13,7 @@ interface Note {
   file_type: string;
   is_premium: boolean;
   status?: string;
+  user_id?: string;
   likes_count?: number;
   downloads_count?: number;
   comments?: any[];
@@ -42,8 +43,12 @@ export const NotesListingPage = () => {
 
   const fetchNotes = async () => {
     try {
-      const response = await fetch('/api/notes');
-      const data = await response.json();
+      const { data, error } = await supabase
+        .from('notes')
+        .select('*, users(name)')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
       setNotes(data || []);
     } catch (error) {
       console.error('Error fetching notes:', error);
@@ -54,8 +59,14 @@ export const NotesListingPage = () => {
 
   const fetchTrendingNotes = async () => {
     try {
-      const response = await fetch('/api/notes/trending');
-      const data = await response.json();
+      const { data, error } = await supabase
+        .from('notes')
+        .select('*, users(name)')
+        .eq('status', 'approved')
+        .order('likes_count', { ascending: false })
+        .limit(5);
+
+      if (error) throw error;
       setTrendingNotes(data || []);
     } catch (error) {
       console.error('Error fetching trending notes:', error);
@@ -222,8 +233,8 @@ export const NotesListingPage = () => {
   };
 
   const filteredNotes = notes.filter(note => {
-    // Only show approved notes in the public listing
-    if (note.status && note.status !== 'approved') return false;
+    // Show approved notes to everyone, but also show pending notes to the uploader
+    if (note.status && note.status !== 'approved' && note.user_id !== user?.id) return false;
     
     const matchesSearch = note.title.toLowerCase().includes(search.toLowerCase());
     const matchesFileType = fileTypeFilter === 'all' || note.file_type === fileTypeFilter;
