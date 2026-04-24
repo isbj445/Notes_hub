@@ -19,7 +19,7 @@ interface Note {
   comments?: any[];
   ai_summary?: string | null;
   created_at: string;
-  users: { name: string };
+  users?: { name: string };
 }
 
 export const NotesListingPage = () => {
@@ -45,13 +45,17 @@ export const NotesListingPage = () => {
     try {
       const { data, error } = await supabase
         .from('notes')
-        .select('*, users(name)')
+        .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase notes error:', error.message);
+        throw error;
+      }
+      console.log('Fetched notes:', data?.length || 0, data);
       setNotes(data || []);
-    } catch (error) {
-      console.error('Error fetching notes:', error);
+    } catch (error: any) {
+      console.error('Error fetching notes:', error.message || error);
     } finally {
       setLoading(false);
     }
@@ -61,15 +65,18 @@ export const NotesListingPage = () => {
     try {
       const { data, error } = await supabase
         .from('notes')
-        .select('*, users(name)')
+        .select('*')
         .eq('status', 'approved')
         .order('likes_count', { ascending: false })
         .limit(5);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase trending error:', error.message);
+        throw error;
+      }
       setTrendingNotes(data || []);
-    } catch (error) {
-      console.error('Error fetching trending notes:', error);
+    } catch (error: any) {
+      console.error('Error fetching trending notes:', error.message || error);
     }
   };
 

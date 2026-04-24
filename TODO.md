@@ -15,5 +15,16 @@
 - [x] Step 3: Fix UploadPage - Set `status: 'approved'` for immediate visibility without admin approval
 - [x] Step 4: Remove broken `/api/notes/trending` call (endpoint doesn't exist)
 
-## Status: COMPLETED
+## Status: IN PROGRESS - Need to update old pending notes in Supabase
+
+## Fix for existing notes
+Run this SQL in Supabase SQL Editor to make all old notes visible:
+
+```sql
+UPDATE public.notes SET status = 'approved' WHERE status = 'pending';
+```
+
+## After code changes, redeploy:
+1. git add . && git commit -m "fix: browse notes from supabase" && git push
+2. Vercel will auto redeploy
 
