@@ -22,8 +22,8 @@
     },
     "allowImportingTsExtensions": true,
     "noEmit": true,
-
     "types": ["vite/client", "node"],
+
     "outDir": "dist"
   },
   "include": ["**/*.ts", "**/*.tsx"]

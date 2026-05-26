@@ -12,7 +12,6 @@ import dotenv from "dotenv";
 dotenv.config({ path: '.env.utf8' });
 
 
-
 const app = express();
 const PORT = 3000;
 
@@ -21,7 +20,6 @@ const PORT = 3000;
 // so we still read them from process.env populated by dotenv.
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
 
 // In dev we allow running without Supabase keys.
 // Upload routes will return 503 when Supabase is not configured.
@@ -93,8 +91,8 @@ app.get('/api/test', (_, res) => res.json({
   notesCount: notes.length,
   supabaseConfigured: Boolean(supabase)
 }));
-
 app.get('/api/notes', (_, res) => res.json(notes));
+
 
 // LIKE
 app.post('/api/notes/like/:id', (req, res) => {
@@ -163,8 +161,8 @@ app.post('/api/notes/upload', upload.single('file'), async (req, res) => {
     const file = (req as any).file;
     if (!file) return res.status(400).json({ error: 'No file uploaded' });
 
-
     const title = req.body.title as string;
+
     const description = req.body.description as string;
     const category = req.body.category as string;
     const is_premium = req.body.is_premium === 'true';

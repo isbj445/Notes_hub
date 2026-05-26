@@ -19,8 +19,9 @@ export const LoginPage = () => {
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email,
-        password,
+        password
       });
+
 
       if (error) throw error;
 
@@ -29,6 +30,7 @@ export const LoginPage = () => {
       const text = error?.message || 'Invalid login credentials';
       setMessage({ type: 'error', text });
     } finally {
+
       setLoading(false);
     }
   };

@@ -9,6 +9,7 @@ export const SignupPage = () => {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
+
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
 
@@ -25,25 +26,24 @@ export const SignupPage = () => {
           data: { name },
         },
       });
-
-
       if (error) throw error;
+
 
       // Attempt to insert the user into the public.users table
       if (data.user) {
         const { error: dbError } = await supabase.from('users').insert([
           { id: data.user.id, name, email }
         ]);
-
         if (dbError) {
+
           console.error("Failed to insert user profile:", dbError);
           // We don't throw here because the auth user was created successfully
         }
       }
 
-
       setIsSuccess(true);
       setMessage({ type: 'success', text: 'Account created successfully! You can now log in.' });
+
     } catch (error: any) {
       setMessage({ type: 'error', text: error.message || 'Something went wrong' });
     } finally {
@@ -121,8 +121,8 @@ export const SignupPage = () => {
               />
             </div>
 
-
             {message && (
+
               <div className={`p-4 rounded-xl text-sm ${message.type === 'success' ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400'}`}>
                 {message.text}
               </div>
