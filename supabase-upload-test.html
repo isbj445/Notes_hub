@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Supabase Upload</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="p-8 max-w-2xl mx-auto">
+  <h1 class="text-3xl font-bold mb-8">Supabase "note" Bucket Test</h1>
+  
+  <div class="border rounded-lg p-6 mb-6">
+    <input type="file" id="fileInput" accept="application/pdf" class="mb-4">
+    <input type="text" id="titleInput" placeholder="Title" class="w-full p-2 border mb-4">
+    <select id="categoryInput" class="w-full p-2 border mb-4">
+      <option>Engineering</option>
+      <option>Medical</option>
+    </select>
+    <textarea id="descInput" placeholder="Description" class="w-full p-2 border mb-4 h-20"></textarea>
+    <button id="uploadBtn" class="bg-blue-500 text-white px-6 py-2 rounded">Upload to Supabase note</button>
+  </div>
+
+  <div id="status"></div>
+
+  <script>
+    document.getElementById('uploadBtn').onclick = async () => {
+      const file = document.getElementById('fileInput').files[0];
+      const title = document.getElementById('titleInput').value;
+      const category = document.getElementById('categoryInput').value;
+      const description = document.getElementById('descInput').value;
+      
+      if (!file || !title) {
+        document.getElementById('status').innerHTML = '<p class="text-red-500">Add file & title</p>';
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('title', title);
+      formData.append('description', description);
+      formData.append('category', category);
+      formData.append('is_premium', 'false');
+
+      document.getElementById('uploadBtn').textContent = 'Uploading...';
+      document.getElementById('uploadBtn').disabled = true;
+
+      try {
+        const res = await fetch('/api/notes/upload', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+          document.getElementById('status').innerHTML = `
+            <div class="bg-green-100 p-4 rounded">
+              <p>✅ Success! <strong>${data.note.file_url}</strong></p>
+              <a href="${data.note.file_url}" target="_blank" class="text-blue-500 underline">Open PDF</a>
+            </div>
+          `;
+        } else {
+          document.getElementById('status').innerHTML = `<p class="text-red-500">Error: ${data.error}</p>`;
+        }
+      } catch (e) {
+        document.getElementById('status').innerHTML = `<p class="text-red-500">Network error: ${e.message}</p>`;
+      }
+      
+      document.getElementById('uploadBtn').textContent = 'Upload to Supabase note';
+      document.getElementById('uploadBtn').disabled = false;
+    };
+  </script>
+</body>
+</html>

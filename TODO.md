@@ -1,0 +1,13 @@
+- [ ] Explore repo entry points / run commands
+- [ ] Run `npm ci`
+- [ ] Attempt `npm run dev`
+- [ ] If it fails due to missing Supabase env, decide: update env OR patch server to not exit
+- [x] Patch `server-final-fixed.ts` to allow running without Supabase keys (dev-only mode)
+- [x] Add missing dev-safe endpoints to `server-final-fixed.ts`:
+      - `/api/notes/:id/comments`
+      - `/api/notes/:id/summarize`
+      - `/api/notes/download/:id`
+- [ ] Re-run `npm run dev`
+- [ ] Verify `/api/test` returns 200
+- [ ] Trigger UI fetches: like/comment/summarize/download (should not 404)
+

@@ -1,0 +1,5 @@
+{
+  "name": "SmartNote - AI-Powered Note Sharing",
+  "description": "A full-stack platform for students to share, view, and download notes with premium features and Razorpay integration.",
+  "requestFramePermissions": []
+}
