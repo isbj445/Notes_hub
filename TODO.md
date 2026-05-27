@@ -1,45 +1,23 @@
-<<<<<<< HEAD
-- [ ] Explore repo entry points / run commands
-- [ ] Run `npm ci`
-- [ ] Attempt `npm run dev`
-- [ ] If it fails due to missing Supabase env, decide: update env OR patch server to not exit
-- [x] Patch `server-final-fixed.ts` to allow running without Supabase keys (dev-only mode)
-- [x] Add missing dev-safe endpoints to `server-final-fixed.ts`:
-      - `/api/notes/:id/comments`
-      - `/api/notes/:id/summarize`
-      - `/api/notes/download/:id`
-- [ ] Re-run `npm run dev`
-- [ ] Verify `/api/test` returns 200
-- [ ] Trigger UI fetches: like/comment/summarize/download (should not 404)
-=======
-# TODO - Fix Vercel Browse/Notes Listing Issue
+# TODO - Supabase Auth/RLS Fix
 
-## Problem
-- Upload works (shows in Dashboard/History) ✓
-- Browse/Notes Listing page shows nothing ✗
+## Done
+- [x] Update Supabase client init (`src/lib/supabase.ts`) with session persistence.
+- [x] Harden AuthContext + add debug logs.
+- [x] Guard admin toggle flow with session/user checks + debug logs.
 
-## Root Causes
-1. UploadPage saves to Supabase DB, but NotesListingPage fetches from local `notes.json` (not persistent on Vercel)
-2. Vercel serverless has ephemeral filesystem - local files don't persist
-3. UploadPage sets `status: 'pending'` but NotesListingPage filters only `approved` notes
 
-## Fix Steps
-- [x] Step 1: Fix NotesListingPage - Use Supabase direct query instead of `/api/notes`
-- [x] Step 2: Fix NotesListingPage - Allow uploader to see their own pending notes
-- [x] Step 3: Fix UploadPage - Set `status: 'approved'` for immediate visibility without admin approval
-- [x] Step 4: Remove broken `/api/notes/trending` call (endpoint doesn't exist)
+## To do
+- [x] Update `src/lib/supabase.ts` to enable `persistSession`, `autoRefreshToken`, `detectSessionInUrl`.
 
-## Status: IN PROGRESS - Need to update old pending notes in Supabase
+- [ ] Update `src/context/AuthContext.tsx`:
+  - [x] Add debug logs (session + user.id)
+  - [x] Ensure initial `getSession()` completes deterministically
+  - [x] Ensure `onAuthStateChange` updates user/session/profile consistently
+- [ ] Update `src/pages/DashboardPage.tsx`:
+  - [x] Add guards before admin role update (ensure `session` and `user.id` exist)
+  - [x] Add debug logs around toggle
 
-## Fix for existing notes
-Run this SQL in Supabase SQL Editor to make all old notes visible:
+- [x] Verify logic for `/admin` unlock based on fresh `profile.role`.
 
-```sql
-UPDATE public.notes SET status = 'approved' WHERE status = 'pending';
-```
-
-## After code changes, redeploy:
-1. git add . && git commit -m "fix: browse notes from supabase" && git push
-2. Vercel will auto redeploy
->>>>>>> a760050380fe4f47bc3b49d0c2ed6f7096d756d3
+- [ ] Run app and manually test: login → auth.uid equivalent not null → Make me Admin works → `/admin` unlocks.
 

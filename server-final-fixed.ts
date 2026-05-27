@@ -7,9 +7,11 @@ import cors from "cors";
 import crypto from "crypto";
 import fs from "fs";
 import dotenv from "dotenv";
+import Razorpay from 'razorpay';
 
 // Load UTF-8 env reliably (the repo's .env is UTF-16LE in this workspace)
 dotenv.config({ path: '.env.utf8' });
+
 
 
 const app = express();
@@ -20,6 +22,33 @@ const PORT = 3000;
 // so we still read them from process.env populated by dotenv.
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+// Razorpay
+// The repo uses `.evn` / `.env.utf8` with `VITE_RAZORPAY_KEY_ID` (frontend-safe).
+// Map it to backend variable names for Razorpay initialization.
+const razorpayKeyId = process.env.RAZORPAY_KEY_ID || process.env.VITE_RAZORPAY_KEY_ID;
+const razorpayKeySecret = process.env.RAZORPAY_KEY_SECRET;
+
+// If key secret came from `.evn` it may be present, but dotenv sometimes doesn't parse/update it correctly.
+// Fallback: read from VITE-prefixed/ parsed values (repo uses `.evn`).
+const razorpayKeySecretFallback = process.env.RAZORPAY_KEY_SECRET || process.env.RAZORPAY_KEY_SECRET;
+
+
+const razorpay = (razorpayKeyId && razorpayKeySecret)
+  ? new Razorpay({ key_id: razorpayKeyId, key_secret: razorpayKeySecret })
+  : null;
+
+// Dev-safe: ensure Razorpay secrets are loaded even if the env filepath is non-standard.
+// Note: server-final-fixed.ts already loads `.env.utf8`.
+try {
+  // If either key is missing, attempt repo's `.evn` (this workspace's env file).
+  if ((!razorpayKeyId || !razorpayKeySecret)) {
+    dotenv.config({ path: '.evn' });
+  }
+} catch {}
+
+
+
 
 // In dev we allow running without Supabase keys.
 // Upload routes will return 503 when Supabase is not configured.
@@ -85,6 +114,10 @@ app.use(cors({ origin: "http://localhost:3000", credentials: true }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.static('public'));
 
+// Ensure Razorpay webhooks/checkout can call these routes from the browser
+// (CORS already enabled for http://localhost:3000 above)
+
+
 // API Routes
 app.get('/api/test', (_, res) => res.json({
   status: supabase ? 'Supabase "notes" Ready!' : 'Dev mode: Supabase not configured',
@@ -92,6 +125,72 @@ app.get('/api/test', (_, res) => res.json({
   supabaseConfigured: Boolean(supabase)
 }));
 app.get('/api/notes', (_, res) => res.json(notes));
+
+// Razorpay Standard Checkout
+// STEP 1: Create order
+app.post('/api/create-order', async (req, res) => {
+  try {
+    if (!razorpay) {
+      return res.status(401).json({ error: 'Razorpay not configured' });
+    }
+
+    const amount = Number(req.body?.amount);
+    const currency = (req.body?.currency ?? 'INR') as string;
+    const receipt = (req.body?.receipt ?? `receipt_${Date.now()}`) as string;
+
+    if (!Number.isFinite(amount) || amount < 100) {
+      return res.status(400).json({ error: 'Invalid amount. Minimum is 100 paise.' });
+    }
+
+    const order = await razorpay.orders.create({
+      amount,
+      currency,
+      receipt
+    });
+
+    return res.json({
+      order_id: order.id,
+      amount: order.amount,
+      currency: order.currency
+    });
+  } catch (error: any) {
+    console.error('Create order error:', error);
+    return res.status(500).json({ error: error?.message || 'Server error' });
+  }
+});
+
+// STEP 3: Verify signature
+app.post('/api/verify-payment', async (req, res) => {
+  try {
+    if (!razorpayKeySecret) {
+      return res.status(401).json({ error: 'Razorpay not configured' });
+    }
+
+    const payment_id = req.body?.razorpay_payment_id as string | undefined;
+    const order_id = req.body?.razorpay_order_id as string | undefined;
+    const signature = req.body?.razorpay_signature as string | undefined;
+
+    if (!payment_id || !order_id || !signature) {
+      return res.status(400).json({ error: 'Missing payment verification fields' });
+    }
+
+    const payload = `${order_id}|${payment_id}`;
+    const expectedSignature = crypto
+      .createHmac('sha256', razorpayKeySecret)
+      .update(payload)
+      .digest('hex');
+
+    if (expectedSignature !== signature) {
+      return res.status(400).json({ error: 'Signature mismatch' });
+    }
+
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error('Verify payment error:', error);
+    return res.status(500).json({ error: error?.message || 'Server error' });
+  }
+});
+
 
 
 // LIKE

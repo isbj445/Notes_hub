@@ -19,6 +19,60 @@ interface Note {
 
 export const DashboardPage = () => {
   const { user, profile, session } = useAuth();
+
+  const roleToggle = async (nextRole: 'admin' | 'free') => {
+    console.log('[DashboardPage] roleToggle click:', {
+      nextRole,
+      sessionUserId: session?.user?.id || null,
+      stateUserId: user?.id || null,
+      currentProfileRole: profile?.role || null,
+    });
+
+    // Safety: ensure we have a valid user/session before any RLS-protected mutation
+    const resolvedUserId = user?.id;
+    if (!session || !resolvedUserId) {
+      console.warn('[DashboardPage] Missing session/user; forcing session refresh');
+      const { data } = await supabase.auth.getSession();
+      const freshUserId = data.session?.user?.id;
+      console.log('[DashboardPage] getSession after click:', { freshUserId });
+
+      if (!freshUserId) {
+        alert('Your session expired. Please log in again.');
+        window.location.href = '/login';
+        return;
+      }
+
+      // Use fresh user id for update
+      const { error } = await supabase
+        .from('users')
+        .update({ role: nextRole })
+        .eq('id', freshUserId);
+
+      if (error) {
+        console.error('[DashboardPage] role update error:', error);
+        alert('Failed to toggle admin');
+        return;
+      }
+
+      window.location.reload();
+      return;
+    }
+
+    // Normal path: we have user + session
+    const { error } = await supabase
+      .from('users')
+      .update({ role: nextRole })
+      .eq('id', resolvedUserId);
+
+    if (error) {
+      console.error('[DashboardPage] role update error:', error);
+      alert('Failed to toggle admin');
+      return;
+    }
+
+    window.location.reload();
+  };
+
   const [notes, setNotes] = useState<Note[]>([]);
   const [downloadHistory, setDownloadHistory] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
@@ -130,16 +184,8 @@ export const DashboardPage = () => {
             </Link>
             <button 
               onClick={async () => {
-                try {
-                  const { error } = await supabase
-                    .from('users')
-                    .update({ role: 'admin' })
-                    .eq('id', user?.id);
-                  if (error) throw error;
-                  window.location.reload();
-                } catch (e) {
-                  alert('Failed to toggle admin');
-                }
+                roleToggle('admin');
+
               }}
               className="inline-flex items-center justify-center space-x-2 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 px-6 py-3 rounded-xl font-bold hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors"
             >
@@ -156,16 +202,8 @@ export const DashboardPage = () => {
             </Link>
             <button 
               onClick={async () => {
-                try {
-                  const { error } = await supabase
-                    .from('users')
-                    .update({ role: 'free' })
-                    .eq('id', user?.id);
-                  if (error) throw error;
-                  window.location.reload();
-                } catch (e) {
-                  alert('Failed to toggle admin');
-                }
+                roleToggle('free');
+
               }}
               className="inline-flex items-center justify-center space-x-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-6 py-3 rounded-xl font-bold hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
             >

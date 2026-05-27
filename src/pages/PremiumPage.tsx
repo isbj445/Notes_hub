@@ -16,23 +16,115 @@ export const PremiumPage = () => {
     }
 
     setLoading(true);
+
     try {
-      // Mock payment flow
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      const { error } = await supabase
-        .from('users')
-        .update({ role: 'premium' })
-        .eq('id', user.id);
+      // Load Razorpay checkout.js
+      await new Promise<void>((resolve, reject) => {
+        if (document.querySelector('script[data-razorpay-checkout="true"]')) return resolve();
 
-      if (error) throw error;
+        const script = document.createElement('script');
+        script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+        script.async = true;
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error('Failed to load Razorpay checkout script'));
+        script.setAttribute('data-razorpay-checkout', 'true');
+        document.body.appendChild(script);
+      });
 
-      alert('Payment Successful! You are now a Premium member.');
-      window.location.reload();
-    } catch (error) {
+      // STEP 1: Create Razorpay order
+      const amountPaise = plan === 'yearly' ? 99900 : 9900; // keep existing UI prices
+
+      const createOrderRes = await fetch('/api/create-order', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          amount: amountPaise,
+          currency: 'INR',
+          receipt: `receipt_${user.id}_${Date.now()}`
+        })
+      });
+
+      const createOrderData = await createOrderRes.json();
+
+      if (!createOrderRes.ok) {
+        throw new Error(createOrderData?.error ?? 'Failed to create Razorpay order');
+      }
+
+      const { order_id } = createOrderData as { order_id: string };
+
+      // STEP 2: Open Razorpay modal
+      const razorpayOptions: any = {
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+        amount: amountPaise,
+        currency: 'INR',
+        name: 'SmartNote',
+        description: plan === 'yearly' ? 'Yearly Premium' : 'Monthly Premium',
+        order_id,
+        prefill: {
+          name: user?.name ?? undefined,
+          email: user?.email ?? undefined
+        },
+        theme: {
+          color: '#f59e0b'
+        },
+        handler: async function (response: any) {
+          try {
+            const verifyRes = await fetch('/api/verify-payment', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_signature: response.razorpay_signature
+              })
+            });
+
+            const verifyData = await verifyRes.json();
+
+            if (!verifyRes.ok || !verifyData?.success) {
+              throw new Error(verifyData?.error ?? 'Payment verification failed');
+            }
+
+            // Mark user as premium only after signature verification succeeds
+            const { error } = await supabase
+              .from('users')
+              .update({ role: 'premium' })
+              .eq('id', user.id);
+
+            if (error) throw error;
+
+            alert('Payment Successful! You are now a Premium member.');
+            window.location.reload();
+          } catch (e: any) {
+            console.error('Post-payment error:', e);
+            alert(e?.message ?? 'Payment failed verification');
+          } finally {
+            setLoading(false);
+          }
+        }
+      };
+
+      const rzp = new (window as any).Razorpay(razorpayOptions);
+
+      rzp.on('payment.failed', function (response: any) {
+        console.error('Razorpay payment.failed:', response);
+        alert(response?.error?.description ?? 'Payment failed');
+        setLoading(false);
+      });
+
+      // Detect modal dismiss/cancel
+      rzp.on('modal.dismiss', function () {
+        setLoading(false);
+      });
+
+      rzp.open();
+    } catch (error: any) {
       console.error('Payment Error:', error);
-      alert('Failed to upgrade to premium');
-    } finally {
+      alert(error?.message ?? 'Failed to upgrade to premium');
       setLoading(false);
     }
   };
