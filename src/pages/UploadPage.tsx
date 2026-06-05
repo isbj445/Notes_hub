@@ -13,7 +13,9 @@ export const UploadPage = () => {
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('Engineering');
   const [isPremium, setIsPremium] = useState(false);
+  const [premiumPriceInr, setPremiumPriceInr] = useState<string>('');
   const [uploading, setUploading] = useState(false);
+
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
@@ -57,7 +59,17 @@ export const UploadPage = () => {
     setProgress(0);
 
     try {
+      // Basic validation for premium price
+      if (isPremium) {
+        const parsed = Number(premiumPriceInr);
+        if (!premiumPriceInr || Number.isNaN(parsed) || parsed <= 0) {
+          setError('Premium notes ke liye price (INR) > 0 dena hoga');
+          return;
+        }
+      }
+
       // 1. Generate file path and type
+
       const fileExt = file.name.split('.').pop();
       const fileName = `${crypto.randomUUID()}.${fileExt}`;
       const filePath = `notes/${user.id}/${fileName}`;
@@ -90,6 +102,8 @@ export const UploadPage = () => {
           file_url: publicUrl,
           file_type: fileType,
           is_premium: isPremium,
+          // price_inr column only exists after DB migration
+          price_inr: isPremium ? Number(premiumPriceInr) : null,
           user_id: user.id,
           status: 'approved'  // Immediate visibility without admin approval
         }]);
@@ -105,6 +119,7 @@ export const UploadPage = () => {
         setDescription('');
         setCategory('Engineering');
         setIsPremium(false);
+        setPremiumPriceInr('');
         navigate('/dashboard');
       }, 1500);
 
@@ -180,18 +195,39 @@ export const UploadPage = () => {
                 />
               </div>
 
-              <div className="flex items-center space-x-3 p-4 bg-amber-50 dark:bg-amber-900/30 rounded-2xl border border-amber-100 dark:border-amber-800">
-                <input
-                  type="checkbox"
-                  id="premium"
-                  checked={isPremium}
-                  onChange={(e) => setIsPremium(e.target.checked)}
-                  className="h-5 w-5 text-amber-600 rounded focus:ring-amber-500 border-amber-300 dark:border-amber-700 bg-white dark:bg-gray-800"
-                />
-                <label htmlFor="premium" className="flex items-center space-x-2 cursor-pointer">
-                  <ShieldCheck className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                  <span className="font-bold text-amber-900 dark:text-amber-100">Mark as Premium Content</span>
-                </label>
+              <div className="flex flex-col gap-3 p-4 bg-amber-50 dark:bg-amber-900/30 rounded-2xl border border-amber-100 dark:border-amber-800">
+                <div className="flex items-center space-x-3">
+                  <input
+                    type="checkbox"
+                    id="premium"
+                    checked={isPremium}
+                    onChange={(e) => setIsPremium(e.target.checked)}
+                    className="h-5 w-5 text-amber-600 rounded focus:ring-amber-500 border-amber-300 dark:border-amber-700 bg-white dark:bg-gray-800"
+                  />
+                  <label htmlFor="premium" className="flex items-center space-x-2 cursor-pointer">
+                    <ShieldCheck className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                    <span className="font-bold text-amber-900 dark:text-amber-100">Mark as Premium Content</span>
+                  </label>
+                </div>
+
+                <div className={`transition-all ${isPremium ? 'opacity-100' : 'opacity-60'}`}>
+                  <label className="block text-xs font-bold text-amber-900/90 dark:text-amber-100 mb-1 uppercase tracking-wider">
+                    Premium Price (INR)
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    step={1}
+                    value={premiumPriceInr}
+                    onChange={(e) => setPremiumPriceInr(e.target.value)}
+                    disabled={!isPremium}
+                    placeholder="e.g. 99"
+                    className="w-full px-4 py-3 rounded-xl border border-amber-200 dark:border-amber-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-500 outline-none transition-all disabled:opacity-60"
+                  />
+                  <p className="text-xs text-amber-700/80 dark:text-amber-200 mt-1">
+                    {isPremium ? 'This amount will show as price tag in Premium notes.' : 'Enable premium to set price.'}
+                  </p>
+                </div>
               </div>
             </div>
 

@@ -1,7 +1,8 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { BookOpen, LogOut, User, Upload, Crown, Menu, X, Shield, Moon, Sun } from 'lucide-react';
+import { BookOpen, LogOut, User, Upload, Menu, X, Shield, Moon, Sun } from 'lucide-react';
+
 import { motion, AnimatePresence } from 'motion/react';
 import { useTheme } from '../context/ThemeContext';
 
@@ -60,10 +61,7 @@ export const Navbar = () => {
                   <Upload className="h-4 w-4" />
                   <span>Upload</span>
                 </Link>
-                <Link to="/premium" className="flex items-center space-x-1 text-amber-600 dark:text-amber-500 hover:text-amber-700 dark:hover:text-amber-400 font-medium transition-colors">
-                  <Crown className="h-4 w-4" />
-                  <span>{profile?.role === 'premium' ? 'Premium Active' : 'Go Premium'}</span>
-                </Link>
+
                 {profile?.role === 'admin' && (
                   <Link to="/admin" className="flex items-center space-x-1 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 font-medium transition-colors">
                     <Shield className="h-4 w-4" />

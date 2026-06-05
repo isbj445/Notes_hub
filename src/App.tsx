@@ -10,8 +10,9 @@ import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { NotesListingPage } from './pages/NotesListingPage';
 import { UploadPage } from './pages/UploadPage';
-import { PremiumPage } from './pages/PremiumPage';
+
 import { DashboardPage } from './pages/DashboardPage';
+
 import { AdminDashboard } from './pages/AdminDashboard';
 import { Loader2 } from 'lucide-react';
 
@@ -54,14 +55,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            <Route
-              path="/premium"
-              element={
-                <ProtectedRoute>
-                  <PremiumPage />
-                </ProtectedRoute>
-              }
-            />
+
             <Route
               path="/dashboard"
               element={

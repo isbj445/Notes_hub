@@ -41,11 +41,19 @@ CREATE POLICY "Users can update their own profile"
 CREATE TABLE public.notes (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   title TEXT NOT NULL,
+  -- Deprecated: per-note unlock intentionally not stored in notes json.
+  -- Use note_purchases table instead.
+
   description TEXT,
   category TEXT,
   file_url TEXT NOT NULL,
   file_type TEXT NOT NULL,
   is_premium BOOLEAN DEFAULT false,
+  price_inr INTEGER,
+  -- price is used only when is_premium=true
+  -- set via UploadPage UI
+  -- examples: 99, 199, 499
+
   status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
   user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
   likes_count INTEGER DEFAULT 0,
@@ -107,7 +115,32 @@ CREATE POLICY "Admins can delete any note"
 
 
 -- ==========================================
--- 3. Comments Table
+-- 3. Per-note purchases (Razorpay unlock history)
+-- ==========================================
+CREATE TABLE public.note_purchases (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+  note_id UUID REFERENCES public.notes(id) ON DELETE CASCADE,
+  amount_inr INTEGER NOT NULL CHECK (amount_inr > 0),
+  razorpay_payment_id TEXT UNIQUE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.note_purchases ENABLE ROW LEVEL SECURITY;
+
+-- Users can view their own purchases
+CREATE POLICY "Users can view their own purchases" 
+  ON public.note_purchases FOR SELECT
+  USING (auth.uid() = user_id);
+
+-- Users can insert their own purchases
+CREATE POLICY "Users can create their own purchases" 
+  ON public.note_purchases FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+
+-- ==========================================
+-- 4. Comments Table
 -- ==========================================
 CREATE TABLE public.comments (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
