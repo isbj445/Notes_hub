@@ -48,7 +48,16 @@ export const PremiumPage = () => {
       });
 
       const createOrderText = await createOrderRes.text();
-      const createOrderData = createOrderText ? JSON.parse(createOrderText) : {};
+      let createOrderData: any = {};
+      try {
+        createOrderData = createOrderText ? JSON.parse(createOrderText) : {};
+      } catch (e) {
+        console.error('PremiumPage: failed to parse /api/create-order JSON', {
+          text: createOrderText,
+          error: e,
+        });
+        throw new Error('Invalid JSON from /api/create-order');
+      }
       console.log('PremiumPage: /api/create-order response', { ok: createOrderRes.ok, status: createOrderRes.status, createOrderData });
 
       if (!createOrderRes.ok || !createOrderData?.success) {
@@ -97,7 +106,17 @@ export const PremiumPage = () => {
               })
             });
 
-            const verifyData = await verifyRes.json();
+            const verifyText = await verifyRes.text();
+            let verifyData: any = {};
+            try {
+              verifyData = verifyText ? JSON.parse(verifyText) : {};
+            } catch (e) {
+              console.error('PremiumPage: failed to parse /api/verify-payment JSON', {
+                text: verifyText,
+                error: e,
+              });
+              throw new Error('Invalid JSON from /api/verify-payment');
+            }
 
             if (!verifyRes.ok || !verifyData?.success) {
               throw new Error(verifyData?.error ?? 'Payment verification failed');
