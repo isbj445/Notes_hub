@@ -43,7 +43,7 @@ export const PremiumPage = () => {
         body: JSON.stringify({
           amount: amountPaise,
           currency: 'INR',
-          receipt: `receipt_${user.id}_${Date.now()}`
+          receipt: `rcpt_${String(user.id).slice(0, 10)}_${Date.now().toString().slice(-8)}`
         })
       });
 
@@ -58,19 +58,30 @@ export const PremiumPage = () => {
       const { order_id } = createOrderData as { order_id: string };
 
       // STEP 2: Open Razorpay modal
+      const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID as string | undefined;
+      console.log('PremiumPage: razorpay key present?', Boolean(razorpayKey));
+
+      // Runtime checks: Razorpay SDK must be loaded and constructor must exist
+      const RazorpayCtor = (window as any)?.Razorpay;
+      console.log('PremiumPage: window.Razorpay exists?', Boolean(RazorpayCtor));
+
+      if (!RazorpayCtor) {
+        throw new Error('Razorpay SDK not loaded. window.Razorpay is missing.');
+      }
+
       const razorpayOptions: any = {
-        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+        key: razorpayKey,
         amount: amountPaise,
         currency: 'INR',
         name: 'SmartNote',
         description: plan === 'yearly' ? 'Yearly Premium' : 'Monthly Premium',
         order_id,
-          prefill: {
-            name: (user as any)?.name ?? undefined,
-            email: user?.email ?? undefined
-          },
+        prefill: {
+          name: (user as any)?.name ?? undefined,
+          email: user?.email ?? undefined,
+        },
         theme: {
-          color: '#f59e0b'
+          color: '#f59e0b',
         },
         handler: async function (response: any) {
           try {
@@ -113,6 +124,8 @@ export const PremiumPage = () => {
 
       const rzp = new (window as any).Razorpay(razorpayOptions);
 
+      console.log('PremiumPage: Razorpay instance created');
+
       rzp.on('payment.failed', function (response: any) {
         console.error('Razorpay payment.failed:', response);
         alert(response?.error?.description ?? 'Payment failed');
@@ -124,6 +137,10 @@ export const PremiumPage = () => {
         setLoading(false);
       });
 
+      // Extra guard: ensure open() exists
+      if (typeof rzp.open !== 'function') {
+        throw new Error('Razorpay instance does not support open().');
+      }
       rzp.open();
     } catch (error: any) {
       console.error('Payment Error:', error);

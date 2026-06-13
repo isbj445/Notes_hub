@@ -135,7 +135,21 @@ app.post('/api/create-order', async (req, res) => {
 
     const amount = Number(req.body?.amount);
     const currency = (req.body?.currency ?? 'INR') as string;
-    const receipt = (req.body?.receipt ?? `receipt_${Date.now()}`) as string;
+    const receiptRaw = (req.body?.receipt ?? `receipt_${Date.now()}`) as string;
+
+    // Razorpay receipt must be <= 40 characters.
+    // Use a Razorpay-friendly receipt prefix to guarantee length constraints.
+    const receiptSafe = String(receiptRaw ?? '').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const receipt = (receiptSafe.length ? receiptSafe : `receipt_${Date.now()}` ).slice(0, 40);
+
+    console.log('[Razorpay] receipt length check:', {
+      receiptRawLength: String(receiptRaw ?? '').length,
+      receiptUsedLength: receipt.length,
+    });
+
+    if (String(receiptRaw ?? '').length > 40) {
+      console.warn('[Razorpay] receipt truncated. originalLength:', String(receiptRaw).length, 'original:', receiptRaw);
+    }
 
     if (!Number.isFinite(amount) || amount < 100) {
       return res.status(400).json({ success: false, error: 'Invalid amount. Minimum is 100 paise.' });
