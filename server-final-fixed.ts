@@ -9,10 +9,10 @@ import fs from "fs";
 import dotenv from "dotenv";
 import Razorpay from 'razorpay';
 
-// Load UTF-8 env reliably (the repo's .env is UTF-16LE in this workspace)
+// Load env reliably (this workspace uses a UTF-16LE-ish .env.utf8 in places)
+// Try multiple sources because the server process sometimes starts without inheriting env values.
 dotenv.config({ path: '.env.utf8' });
-
-
+dotenv.config({ path: '.evn' });
 
 const app = express();
 const PORT = 3000;
@@ -24,19 +24,18 @@ const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 // Razorpay
-// The repo uses `.evn` / `.env.utf8` with `VITE_RAZORPAY_KEY_ID` (frontend-safe).
-// Map it to backend variable names for Razorpay initialization.
+// Load credentials (support both .env styles). IMPORTANT: Razorpay requires a matching key_id/key_secret pair.
 const razorpayKeyId = process.env.RAZORPAY_KEY_ID || process.env.VITE_RAZORPAY_KEY_ID;
 const razorpayKeySecret = process.env.RAZORPAY_KEY_SECRET;
-
-// If key secret came from `.evn` it may be present, but dotenv sometimes doesn't parse/update it correctly.
-// Fallback: read from VITE-prefixed/ parsed values (repo uses `.evn`).
-const razorpayKeySecretFallback = process.env.RAZORPAY_KEY_SECRET || process.env.RAZORPAY_KEY_SECRET;
-
 
 const razorpay = (razorpayKeyId && razorpayKeySecret)
   ? new Razorpay({ key_id: razorpayKeyId, key_secret: razorpayKeySecret })
   : null;
+
+// Debug (do NOT log secrets in production)
+const rpEnvKind = razorpayKeyId?.startsWith('rzp_live_') ? 'live' : (razorpayKeyId?.startsWith('rzp_test_') ? 'test' : 'unknown');
+console.log('[Razorpay] key_id present:', Boolean(razorpayKeyId), 'key_secret present:', Boolean(razorpayKeySecret), 'key_id env:', rpEnvKind);
+
 
 // Dev-safe: ensure Razorpay secrets are loaded even if the env filepath is non-standard.
 // Note: server-final-fixed.ts already loads `.env.utf8`.
@@ -130,8 +129,8 @@ app.get('/api/notes', (_, res) => res.json(notes));
 // STEP 1: Create order
 app.post('/api/create-order', async (req, res) => {
   try {
-    if (!razorpay) {
-      return res.status(401).json({ error: 'Razorpay not configured' });
+    if (!razorpay || !razorpayKeyId || !razorpayKeySecret) {
+      return res.status(500).json({ success: false, error: 'Razorpay keys missing' });
     }
 
     const amount = Number(req.body?.amount);
@@ -139,31 +138,46 @@ app.post('/api/create-order', async (req, res) => {
     const receipt = (req.body?.receipt ?? `receipt_${Date.now()}`) as string;
 
     if (!Number.isFinite(amount) || amount < 100) {
-      return res.status(400).json({ error: 'Invalid amount. Minimum is 100 paise.' });
+      return res.status(400).json({ success: false, error: 'Invalid amount. Minimum is 100 paise.' });
     }
+
+    // Razorpay SDK should handle auth, but 401 usually means wrong key_secret for key_id.
+    // Log only presence + environment type.
+    const envKind = razorpayKeyId.startsWith('rzp_live_') ? 'live' : (razorpayKeyId.startsWith('rzp_test_') ? 'test' : 'unknown');
+    console.log('[Razorpay] create-order using:', { envKind, amount, currency, receipt, keyId: razorpayKeyId });
 
     const order = await razorpay.orders.create({
       amount,
       currency,
-      receipt
+      receipt,
     });
 
     return res.json({
+      success: true,
       order_id: order.id,
       amount: order.amount,
-      currency: order.currency
+      currency: order.currency,
     });
   } catch (error: any) {
-    console.error('Create order error:', error);
-    return res.status(500).json({ error: error?.message || 'Server error' });
+    console.error('Create order error:', {
+      statusCode: error?.statusCode,
+      error: error?.error,
+      message: error?.message,
+    });
+    return res.status(500).json({
+      success: false,
+      error: 'Razorpay order creation failed',
+      details: error?.message || error,
+    });
   }
 });
+
 
 // STEP 3: Verify signature
 app.post('/api/verify-payment', async (req, res) => {
   try {
     if (!razorpayKeySecret) {
-      return res.status(401).json({ error: 'Razorpay not configured' });
+      return res.status(500).json({ success: false, error: 'Razorpay keys missing' });
     }
 
     const payment_id = req.body?.razorpay_payment_id as string | undefined;
@@ -171,7 +185,7 @@ app.post('/api/verify-payment', async (req, res) => {
     const signature = req.body?.razorpay_signature as string | undefined;
 
     if (!payment_id || !order_id || !signature) {
-      return res.status(400).json({ error: 'Missing payment verification fields' });
+      return res.status(400).json({ success: false, error: 'Missing payment verification fields' });
     }
 
     const payload = `${order_id}|${payment_id}`;
@@ -181,13 +195,17 @@ app.post('/api/verify-payment', async (req, res) => {
       .digest('hex');
 
     if (expectedSignature !== signature) {
-      return res.status(400).json({ error: 'Signature mismatch' });
+      return res.status(400).json({ success: false, error: 'Signature mismatch' });
     }
 
     return res.json({ success: true });
   } catch (error: any) {
     console.error('Verify payment error:', error);
-    return res.status(500).json({ error: error?.message || 'Server error' });
+    return res.status(500).json({
+      success: false,
+      error: 'Payment verification failed',
+      details: error?.message || error
+    });
   }
 });
 

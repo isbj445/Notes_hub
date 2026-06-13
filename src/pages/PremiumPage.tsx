@@ -34,6 +34,7 @@ export const PremiumPage = () => {
       // STEP 1: Create Razorpay order
       const amountPaise = plan === 'yearly' ? 99900 : 9900; // keep existing UI prices
 
+      console.log('PremiumPage: creating Razorpay order...');
       const createOrderRes = await fetch('/api/create-order', {
         method: 'POST',
         headers: {
@@ -46,9 +47,11 @@ export const PremiumPage = () => {
         })
       });
 
-      const createOrderData = await createOrderRes.json();
+      const createOrderText = await createOrderRes.text();
+      const createOrderData = createOrderText ? JSON.parse(createOrderText) : {};
+      console.log('PremiumPage: /api/create-order response', { ok: createOrderRes.ok, status: createOrderRes.status, createOrderData });
 
-      if (!createOrderRes.ok) {
+      if (!createOrderRes.ok || !createOrderData?.success) {
         throw new Error(createOrderData?.error ?? 'Failed to create Razorpay order');
       }
 
@@ -62,10 +65,10 @@ export const PremiumPage = () => {
         name: 'SmartNote',
         description: plan === 'yearly' ? 'Yearly Premium' : 'Monthly Premium',
         order_id,
-        prefill: {
-          name: user?.name ?? undefined,
-          email: user?.email ?? undefined
-        },
+          prefill: {
+            name: (user as any)?.name ?? undefined,
+            email: user?.email ?? undefined
+          },
         theme: {
           color: '#f59e0b'
         },
